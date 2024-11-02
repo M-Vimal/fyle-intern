@@ -34,7 +34,7 @@ You will hear back within 48 hours from us via email.
 virtualenv env --python=python3.8
 source env/bin/activate
 pip install -r requirements.txt
-```
+```cd
 ### Reset DB
 
 ```

@@ -4,3 +4,7 @@ omit =
     *__pycache__/*
     *.pytest_cache/*
     *tests/*
+    *migrations/*
+    gunicorn_config.py
+
+

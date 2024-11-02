@@ -1,3 +1,5 @@
+from core.models.assignments import  GradeEnum
+
 def test_get_assignments_teacher_1(client, h_teacher_1):
     response = client.get(
         '/teacher/assignments',
@@ -99,3 +101,51 @@ def test_grade_assignment_draft_assignment(client, h_teacher_1):
     data = response.json
 
     assert data['error'] == 'FyleError'
+
+
+
+def test_grade_assignment_invalid_grade(client, h_teacher_1):
+    """
+    failure case: attempting to grade with a non-existent grade
+    """
+    response = client.post(
+        '/teacher/assignments/grade',
+        headers=h_teacher_1,
+        json={
+            "id": 1,
+            "grade": "Z"  
+        }
+    )
+
+    assert response.status_code == 400
+    data = response.json
+    assert data['error'] == 'ValidationError'
+
+
+def test_get_assignments_non_existent_teacher(client):
+    """
+    failure case: request assignments for a non-existent teacher
+    """
+    response = client.get(
+        '/teacher/assignments',
+        headers={'X-Principal': '{"teacher_id": 9999, "user_id": 9999}'}
+    )
+
+    assert response.status_code == 404
+    error_response = response.json
+    assert error_response['error'] == 'NotFound'
+
+
+def test_grade_assignment_missing_grade_field(client, h_teacher_1):
+    """
+    Failure case: missing 'grade' field in grading request
+    """
+    response = client.post(
+        '/teacher/assignments/grade',
+        headers=h_teacher_1,
+        json={"id": 1}
+    )
+    assert response.status_code == 400
+    data = response.json
+    assert data['error'] == 'ValidationError'
+    assert 'grade' in data['message']  

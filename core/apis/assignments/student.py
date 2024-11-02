@@ -1,9 +1,10 @@
 from flask import Blueprint
+from core.libs import assertions
 from core import db
 from core.apis import decorators
 from core.apis.responses import APIResponse
 from core.models.assignments import Assignment
-
+from flask import abort
 from .schema import AssignmentSchema, AssignmentSubmitSchema
 student_assignments_resources = Blueprint('student_assignments_resources', __name__)
 
@@ -11,7 +12,11 @@ student_assignments_resources = Blueprint('student_assignments_resources', __nam
 @student_assignments_resources.route('/assignments', methods=['GET'], strict_slashes=False)
 @decorators.authenticate_principal
 def list_assignments(p):
-    """Returns list of assignments"""
+    """Returns list of assignments for a specific student."""
+    
+    student = Assignment.get_by_id(p.student_id)  
+    if not student:
+        abort(404, description='No student found with this ID')    
     students_assignments = Assignment.get_assignments_by_student(p.student_id)
     students_assignments_dump = AssignmentSchema().dump(students_assignments, many=True)
     return APIResponse.respond(data=students_assignments_dump)

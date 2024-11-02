@@ -1,10 +1,12 @@
 import enum
+from flask import abort
 from core import db
 from core.apis.decorators import AuthPrincipal
 from core.libs import helpers, assertions
 from core.models.teachers import Teacher
 from core.models.students import Student
 from sqlalchemy.types import Enum as BaseEnum
+from sqlalchemy import or_
 
 
 class GradeEnum(str, enum.Enum):
@@ -24,7 +26,7 @@ class Assignment(db.Model):
     __tablename__ = 'assignments'
     id = db.Column(db.Integer, db.Sequence('assignments_id_seq'), primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey(Student.id), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey(Teacher.id), nullable=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey(Teacher.id), nullable=False)
     content = db.Column(db.Text)
     grade = db.Column(BaseEnum(GradeEnum))
     state = db.Column(BaseEnum(AssignmentStateEnum), default=AssignmentStateEnum.DRAFT, nullable=False)
@@ -63,10 +65,15 @@ class Assignment(db.Model):
     def submit(cls, _id, teacher_id, auth_principal: AuthPrincipal):
         assignment = Assignment.get_by_id(_id)
         assertions.assert_found(assignment, 'No assignment with this id was found')
+        if assignment.state != AssignmentStateEnum.DRAFT:
+           assertions.assert_valid(False, 'only a draft assignment can be submitted')
         assertions.assert_valid(assignment.student_id == auth_principal.student_id, 'This assignment belongs to some other student')
         assertions.assert_valid(assignment.content is not None, 'assignment with empty content cannot be submitted')
+        assertions.assert_valid(assignment.teacher_id == auth_principal.teacher_id, 'This assignment belongs to a different teacher')
+
 
         assignment.teacher_id = teacher_id
+        assignment.state = AssignmentStateEnum.SUBMITTED
         db.session.flush()
 
         return assignment
@@ -77,17 +84,39 @@ class Assignment(db.Model):
         assignment = Assignment.get_by_id(_id)
         assertions.assert_found(assignment, 'No assignment with this id was found')
         assertions.assert_valid(grade is not None, 'assignment with empty grade cannot be graded')
+        assertions.assert_valid(assignment.state != AssignmentStateEnum.DRAFT, 'Draft assignments cannot be graded')
+        if auth_principal.user_id != 5 and assignment.teacher_id != auth_principal.teacher_id:
+            assertions.assert_valid(False, 'You cannot grade an assignment that is not yours')
 
+        if assignment.state == AssignmentStateEnum.GRADED:
+            if auth_principal.user_id != 5:  
+                assertions.assert_valid(False, 'Only the principal can regrade this assignment')
         assignment.grade = grade
         assignment.state = AssignmentStateEnum.GRADED
-        db.session.flush()
-
+        db.session.commit()
         return assignment
 
     @classmethod
     def get_assignments_by_student(cls, student_id):
-        return cls.filter(cls.student_id == student_id).all()
+        student = Assignment.get_by_id(student_id)  
+        if not student:
+            assertions.assert_found(False,"Student not found") 
+        return cls.query.filter(cls.student_id == student_id).all()
+
+
+
 
     @classmethod
-    def get_assignments_by_teacher(cls):
-        return cls.query.all()
+    def get_graded_and_submitted_assignments(cls):
+        """Returns all assignments that are either graded or submitted."""
+        return cls.filter(
+            or_(cls.state == AssignmentStateEnum.GRADED, cls.state == AssignmentStateEnum.SUBMITTED)
+        ).all()
+    @classmethod
+    def get_assignments_by_teacher(cls,teacher_id):
+        """Return assignments based on the teacher ID."""
+        teacher = Assignment.get_by_id(teacher_id)  
+        if not teacher:
+            abort(404, description="Teacher not found")
+        return cls.query.filter(cls.teacher_id == teacher_id).all()
+

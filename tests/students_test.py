@@ -30,7 +30,7 @@ def test_post_assignment_null_content(client, h_student_1):
     """
 
     response = client.post(
-        '/student/assignments',
+        '/student/assignments/submit',
         headers=h_student_1,
         json={
             'content': None
@@ -74,15 +74,26 @@ def test_submit_assignment_student_1(client, h_student_1):
     assert data['teacher_id'] == 2
 
 
-def test_assignment_resubmit_error(client, h_student_1):
+def test_assignment_resubmit_error(client, h_student_2):
     response = client.post(
         '/student/assignments/submit',
-        headers=h_student_1,
+        headers=h_student_2,
         json={
-            'id': 2,
+            'id': 3,
             'teacher_id': 2
         })
     error_response = response.json
     assert response.status_code == 400
     assert error_response['error'] == 'FyleError'
     assert error_response["message"] == 'only a draft assignment can be submitted'
+def test_get_assignments_non_existing_student(client):
+    # Assuming there's a mechanism to check for invalid user access
+    response = client.get(
+        '/student/assignments',
+        headers={'X-Principal': '{"student_id": 999, "user_id": 999}'}
+    )
+
+    assert response.status_code == 404
+    error_response = response.json
+    assert error_response['error'] == 'NotFound'
+ 
