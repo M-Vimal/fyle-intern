@@ -107,6 +107,7 @@ class Assignment(db.Model):
 
 
     @classmethod
+<<<<<<< HEAD
     def get_graded_and_submitted_assignments(cls):
         """Returns all assignments that are either graded or submitted."""
         return cls.filter(
@@ -120,3 +121,11 @@ class Assignment(db.Model):
             abort(404, description="Teacher not found")
         return cls.query.filter(cls.teacher_id == teacher_id).all()
 
+=======
+    def get_assignments_by_teacher(cls):
+        return cls.query.all()
+
+    @classmethod
+    def get_assignments_by_principal(cls):
+        return cls.filter(cls.state != AssignmentStateEnum.DRAFT).all()
+>>>>>>> upstream/main

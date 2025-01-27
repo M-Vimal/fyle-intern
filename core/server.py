@@ -1,7 +1,12 @@
 from flask import jsonify
 from marshmallow.exceptions import ValidationError
 from core import app
+<<<<<<< HEAD
 from core.apis.assignments import student_assignments_resources, teacher_assignments_resources,principal_assignments_resources
+=======
+from core.apis.assignments import student_assignments_resources, teacher_assignments_resources, \
+    principal_assignments_resources
+>>>>>>> upstream/main
 from core.libs import helpers
 from core.libs.exceptions import FyleError
 from werkzeug.exceptions import HTTPException
